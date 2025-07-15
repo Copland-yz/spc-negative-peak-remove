@@ -1,0 +1,5 @@
+Flask
+numpy
+scipy
+Werkzeug
+flask-cors

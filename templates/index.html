@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SPC Negative Peak Removal Tool</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            padding: 30px;
+        }
+        
+        .upload-section {
+            margin-bottom: 30px;
+        }
+        
+        .drop-zone {
+            border: 3px dashed #3498db;
+            border-radius: 10px;
+            padding: 60px 20px;
+            text-align: center;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #2980b9;
+            background: #e3f2fd;
+            transform: translateY(-2px);
+        }
+        
+        .drop-zone i {
+            font-size: 4em;
+            color: #3498db;
+            margin-bottom: 20px;
+        }
+        
+        .drop-zone p {
+            font-size: 1.2em;
+            color: #34495e;
+            margin-bottom: 10px;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+        
+        .control-group input, .control-group select {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        
+        .control-group input:focus, .control-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #2ecc71);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(46, 204, 113, 0.3);
+        }
+        
+        .visualization {
+            margin-bottom: 30px;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .file-info {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #27ae60;
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #3498db;
+            font-weight: 600;
+        }
+        
+        .file-list {
+            margin-top: 20px;
+        }
+        
+        .file-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .save-section {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #ffc107;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>SPC Negative Peak Removal Tool</h1>
+            <p>Upload Galactic SPC files, set thresholds, and remove negative peaks interactively</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <div class="drop-zone" id="dropZone">
+                    <p>📁</p>
+                    <p><strong>Drag & Drop SPC Files Here</strong></p>
+                    <p>or click to browse</p>
+                    <input type="file" id="fileInput" multiple accept=".spc" style="display: none;">
+                </div>
+                <div id="fileList" class="file-list hidden"></div>
+            </div>
+            
+            <!-- Controls Section -->
+            <div class="controls hidden" id="controls">
+                <div class="control-group">
+                    <label for="threshold">Negative Peak Threshold:</label>
+                    <input type="number" id="threshold" value="0" step="0.1" placeholder="e.g., 0 or -100">
+                </div>
+                <div class="control-group">
+                    <label for="selectedFile">Select File to Process:</label>
+                    <select id="selectedFile"></select>
+                </div>
+                <div class="control-group">
+                    <button class="btn btn-primary" onclick="processData()">Process Spectra</button>
+                </div>
+            </div>
+            
+            <!-- Status Messages -->
+            <div id="status"></div>
+            
+            <!-- Visualization Section -->
+            <div class="visualization hidden" id="visualization">
+                <h3>Spectra Comparison</h3>
+                <div id="plotContainer" style="height: 500px;"></div>
+            </div>
+            
+            <!-- Save Section -->
+            <div class="save-section hidden" id="saveSection">
+                <h3>Save Processed Files</h3>
+                <div class="control-group">
+                    <label for="saveFilename">Filename:</label>
+                    <input type="text" id="saveFilename" placeholder="processed_spectrum.spc">
+                </div>
+                <button class="btn btn-success" onclick="saveFile()">Save SPC File</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let uploadedFiles = [];
+        let processedFiles = [];
+        
+        // Drag and drop functionality
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+        
+        function handleFiles(files) {
+            const formData = new FormData();
+            for (let file of files) {
+                if (file.name.endsWith('.spc')) {
+                    formData.append('files', file);
+                }
+            }
+            
+            if (formData.has('files')) {
+                uploadFiles(formData);
+            } else {
+                showStatus('Please select valid SPC files.', 'error');
+            }
+        }
+        
+        function uploadFiles(formData) {
+            showStatus('Uploading and reading SPC files...', 'loading');
+            
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    uploadedFiles = data.files;
+                    displayFileList();
+                    populateFileSelector();
+                    document.getElementById('controls').classList.remove('hidden');
+                    showStatus(`Successfully loaded ${data.files.length} SPC file(s).`, 'success');
+                } else {
+                    showStatus(`Error: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showStatus(`Error uploading files: ${error}`, 'error');
+            });
+        }
+        
+        function displayFileList() {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+            
+            uploadedFiles.forEach(file => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                const unitInfo = file.x_unit ? ` (${file.x_unit})` : '';
+                fileItem.innerHTML = `
+                    <span><strong>${file.filename}</strong> - ${file.x_values.length} data points${unitInfo}</span>
+                `;
+                fileList.appendChild(fileItem);
+            });
+            
+            fileList.classList.remove('hidden');
+        }
+        
+        function populateFileSelector() {
+            const selector = document.getElementById('selectedFile');
+            selector.innerHTML = '';
+            
+            uploadedFiles.forEach((file, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = file.filename;
+                selector.appendChild(option);
+            });
+        }
+        
+        function processData() {
+            const threshold = parseFloat(document.getElementById('threshold').value);
+            
+            if (isNaN(threshold)) {
+                showStatus('Please enter a valid threshold value.', 'error');
+                return;
+            }
+            
+            showStatus('Processing spectra data...', 'loading');
+            
+            fetch('/process', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    threshold: threshold,
+                    files: uploadedFiles
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    processedFiles = data.processed_files;
+                    visualizeData();
+                    showSaveSection();
+                    showStatus('Spectra processed successfully!', 'success');
+                } else {
+                    showStatus(`Error processing data: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showStatus(`Error: ${error}`, 'error');
+            });
+        }
+        
+        function visualizeData() {
+            const selectedIndex = parseInt(document.getElementById('selectedFile').value);
+            const file = processedFiles[selectedIndex];
+            
+            const trace1 = {
+                x: file.x_values,
+                y: file.original_y,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Original Spectrum',
+                line: { color: '#e74c3c', width: 2 }
+            };
+            
+            const trace2 = {
+                x: file.x_values,
+                y: file.processed_y,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Processed Spectrum',
+                line: { color: '#27ae60', width: 2 }
+            };
+            
+            // Determine X-axis label based on detected units
+            let xAxisLabel = 'X-axis';
+            console.log('File x_unit:', file.x_unit); // Debug log
+            if (file.x_unit && file.x_unit !== 'Unknown') {
+                if (file.x_unit === 'cm⁻¹') {
+                    xAxisLabel = 'Wavenumber (cm⁻¹)';
+                } else if (file.x_unit === 'nm') {
+                    xAxisLabel = 'Wavelength (nm)';
+                } else if (file.x_unit === 'μm') {
+                    xAxisLabel = 'Wavelength (μm)';
+                } else {
+                    xAxisLabel = `X-axis (${file.x_unit})`;
+                }
+            } else {
+                console.log('No valid unit detected, using default X-axis label');
+            }
+            
+            const layout = {
+                title: `Spectrum Comparison: ${file.filename}`,
+                xaxis: { title: xAxisLabel },
+                yaxis: { title: 'Intensity' },
+                hovermode: 'closest',
+                showlegend: true,
+                legend: { x: 0, y: 1 }
+            };
+            
+            Plotly.newPlot('plotContainer', [trace1, trace2], layout, {responsive: true});
+            document.getElementById('visualization').classList.remove('hidden');
+        }
+        
+        function showSaveSection() {
+            const selectedIndex = parseInt(document.getElementById('selectedFile').value);
+            const file = processedFiles[selectedIndex];
+            document.getElementById('saveFilename').value = `processed_${file.filename}`;
+            document.getElementById('saveSection').classList.remove('hidden');
+        }
+        
+        function saveFile() {
+            const selectedIndex = parseInt(document.getElementById('selectedFile').value);
+            const file = processedFiles[selectedIndex];
+            const filename = document.getElementById('saveFilename').value;
+            
+            if (!filename) {
+                showStatus('Please enter a filename.', 'error');
+                return;
+            }
+            
+            showStatus('Saving processed SPC file...', 'loading');
+            
+            fetch('/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    filename: filename,
+                    processed_y: file.processed_y,
+                    original_data: file.original_data
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showStatus(`File saved successfully! <a href="/download/${filename}" download>Download here</a>`, 'success');
+                } else {
+                    showStatus(`Error saving file: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showStatus(`Error: ${error}`, 'error');
+            });
+        }
+        
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.className = `status ${type}`;
+            status.innerHTML = message;
+            status.classList.remove('hidden');
+        }
+        
+        // Update visualization when file selection changes
+        document.getElementById('selectedFile').addEventListener('change', () => {
+            if (processedFiles.length > 0) {
+                visualizeData();
+                showSaveSection();
+            }
+        });
+    </script>
+</body>
+</html>
